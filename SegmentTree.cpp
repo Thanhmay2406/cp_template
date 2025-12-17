@@ -2,70 +2,61 @@
 
 using namespace std;
 
-/*
- * update(pos, x): set a[pos] = x;
- * get(l, r): calculate sum a[l] + a[l + 1] + .... + a[r]
- * */
-
-struct ST {
+template <class T> struct SegmentTree {
   int n;
-  vector <int> t;
+  vector<T> tree;
+  T identity;
+  function<T(T, T)> op;
 
-  ST(const vector <int>& a): n(a.size()) {
-    t.assign(n * 4, 0);
-    build(1, 0, n - 1, a);
+  SegmentTree(int _n, T _identity, function<T(T, T)> _op)
+      : n(_n), identity(_identity), op(_op) {
+    tree.assign(4 * n, identity);
   }
 
-  void build(int id, int l, int r, const vector<int>& a) {
-    if (l == r) {
-      t[id] = a[l];
-      return;
+  void build(const vector<T> &a, int node, int start, int end) {
+    if (start == end) {
+      if (start < a.size())
+        tree[node] = a[start];
+      else
+        tree[node] = identity;
+    } else {
+      int mid = (start + end) / 2;
+      build(a, 2 * node, start, mid);
+      build(a, 2 * node + 1, mid + 1, end);
+      tree[node] = op(tree[2 * node], tree[2 * node + 1]);
     }
-
-    int mid = (l + r) / 2;
-
-    build(id * 2, l, mid, a);
-    build(id * 2 + 1, mid + 1, r, a);
-
-    t[id] = t[id * 2] + t[id * 2 + 1];
   }
 
-  void update(int pos, int x, int id, int l, int r) {
-    if (pos < l || r < pos) {
-      return;
+  void build(const vector<T> &a) { build(a, 1, 0, n - 1); }
+
+  void update(int node, int start, int end, int pos, T val) {
+    if (start == end) {
+      tree[node] = val;
+    } else {
+      int mid = (start + end) / 2;
+      if (start <= pos && pos <= mid) {
+        update(2 * node, start, mid, pos, val);
+      } else {
+        update(2 * node + 1, mid + 1, end, pos, val);
+      }
+      tree[node] = op(tree[2 * node], tree[2 * node + 1]);
     }
-
-    if (l == r) {
-      t[id] = x;
-      return;
-    }
-
-    int mid = (l + r) / 2;
-
-    update(pos, x, id * 2, l, mid);
-    update(pos, x, id * 2 + 1, mid + 1, r);
-
-    t[id] = t[id * 2] + t[id * 2 + 1];
   }
 
-  void update(int pos, int x) { update(pos, x, 1, 0, n - 1); }
+  void update(int pos, T val) { update(1, 0, n - 1, pos, val); }
 
-  int get_sum(int u, int v, int id, int l, int r) {
-    if(v < l || r < u) {
-      return 0;
+  T query(int node, int start, int end, int l, int r) {
+    if (r < start || end < l) {
+      return identity;
     }
-
-    if (u <= l && r <= v) {
-      return t[id];
+    if (l <= start && end <= r) {
+      return tree[node];
     }
-
-    int mid = (l + r) / 2;
-
-    int left = get(u, v, id * 2, l, mid);
-    int right = get(u, v, id * 2 + 1, mid + 1, r);
-
-    return left + right;
+    int mid = (start + end) / 2;
+    T p1 = query(2 * node, start, mid, l, r);
+    T p2 = query(2 * node + 1, mid + 1, end, l, r);
+    return op(p1, p2);
   }
 
-  int get(int l, int r) { return get(l, r, 1, 0, n - 1); }
+  T query(int l, int r) { return query(1, 0, n - 1, l, r); }
 };
